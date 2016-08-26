@@ -2,8 +2,6 @@ package puravidabloobs2k16.memester;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
-import android.content.ContextWrapper;
 import android.content.DialogInterface;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
@@ -17,28 +15,23 @@ import android.graphics.Typeface;
 import android.media.ExifInterface;
 import android.os.Bundle;
 import android.os.Environment;
-import android.util.AttributeSet;
 import android.view.Display;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.Toast;
-
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Locale;
-import java.util.StringTokenizer;
 import android.graphics.drawable.BitmapDrawable;
-
+import java.io.FileOutputStream;
+import java.io.File;
 
 public class MemesRMaiden extends Activity {
     private static ImageFinder imageFinder;
     private static PhraseFinder phraseFinder;
     protected static Display display;
+    Bitmap bg;
     Meme meme;
 
     @Override
@@ -56,7 +49,7 @@ public class MemesRMaiden extends Activity {
         // should alert them if it's a duplicate file... TODO:this
         // shout out to this stackoverflow question http://stackoverflow.com/questions/4918079/android-drawing-a-canvas-to-an-imageview
         try {
-           Bitmap bg = createBitmap(meme.image_file_name);
+           bg = createBitmap(meme.image_file_name);
             bg = bg.copy(Bitmap.Config.ARGB_8888, true);
             Canvas canvas = new Canvas(bg);
             Paint paint = get_paint(canvas);
@@ -68,7 +61,7 @@ public class MemesRMaiden extends Activity {
             e.printStackTrace();
         }
 
-        /*final Button button = (Button) findViewById(R.id.save_button);
+        final Button button = (Button) findViewById(R.id.save_button);
         button.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
 
@@ -80,7 +73,7 @@ public class MemesRMaiden extends Activity {
                         .setMessage("Name Your File")
                         .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int which) {
-                                //String file_name = input.getText().toString();
+                                saveBitmap(bg, input.getText().toString());
                             }
                         })
                         .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
@@ -96,7 +89,7 @@ public class MemesRMaiden extends Activity {
                 alertDialog.setView(input); // uncomment this line
                 alertDialog.show();
             }
-        });*/
+        });
     }
 
     private Bitmap draw_meme(Bitmap bitmap, Canvas canvas, Paint paint) {
@@ -104,6 +97,36 @@ public class MemesRMaiden extends Activity {
         int y_position = getYPosition(screen_size.y, bitmap.getHeight());
         int x_position = getXPosition(screen_size.x, bitmap.getWidth());
         //canvas.drawBitmap(bitmap, x_position, y_position, paint);
+        return draw_text(paint, bitmap, canvas, 0, 0);
+    }
+
+    private Bitmap draw_text(Paint paint, Bitmap bitmap, Canvas canvas, int x_position, int y_position) {
+        int font_size = getFontSize(paint, meme.message, bitmap);
+        if (font_size < 80) {
+            String[] texts = splitText(meme.message);
+            String text1 = texts[0];
+            String text2 = texts[1];
+            font_size = getFontForTwo(paint, text1, text2, bitmap);
+            System.out.println("font_size " + font_size);
+            paint.setTextSize(font_size);
+            System.out.println("bitmap width " + bitmap.getWidth() + " text1 width " + paint.measureText(text1) + " text2 width " + paint.measureText(text2));
+            int y_offset;
+            if (font_size >= 100) {
+                y_offset = 8;
+            } else {
+                y_offset = 10;
+            }
+            canvas.drawText(text1, x_position, bitmap.getHeight() / y_offset + y_position, paint);
+            canvas.drawText(text2, x_position, bitmap.getHeight() + y_position - (bitmap.getWidth() / 15), paint);
+        } else {
+            int y_offset;
+            if (font_size >= 100) {
+                y_offset = 8;
+            } else {
+                y_offset = 10;
+            }
+            canvas.drawText(meme.message, x_position, bitmap.getHeight() / 8 + y_position, paint);
+        }
         return bitmap;
     }
 
@@ -241,6 +264,35 @@ public class MemesRMaiden extends Activity {
     // creates a new Meme object from global ImageFinder and PhraseFinder objects
     protected static Meme makeMeme() {
         return new Meme(phraseFinder, imageFinder);
+    }
+
+
+    // src: https://developer.android.com/training/basics/data-storage/files.html
+    /* Checks if external storage is available for read and write */
+    public boolean isExternalStorageWritable() {
+        String state = Environment.getExternalStorageState();
+        if (Environment.MEDIA_MOUNTED.equals(state)) {
+            return true;
+        }
+        return false;
+    }
+
+    public void saveBitmap(Bitmap bitmap, String filename) {
+        if (isExternalStorageWritable()) {
+            try {
+                //String path = Environment.getExternalStoragePublicDirectory(
+                //        Environment.DIRECTORY_DCIM + "/Pictures");
+                //File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES) + "/" + filename;
+                File file = new File(Environment.getExternalStoragePublicDirectory(
+                        Environment.DIRECTORY_PICTURES), filename + ".png");
+                for (int i = 0; i < 15; i++) {
+                    System.out.println("path is " + file.getPath().toString());
+                }
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, new FileOutputStream(file));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 
 }
