@@ -15,6 +15,8 @@ import android.graphics.Typeface;
 import android.media.ExifInterface;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.design.widget.FloatingActionButton;
+import android.support.v7.app.AppCompatActivity;
 import android.view.Display;
 import android.view.View;
 import android.widget.Button;
@@ -26,8 +28,16 @@ import java.util.Locale;
 import android.graphics.drawable.BitmapDrawable;
 import java.io.FileOutputStream;
 import java.io.File;
+import android.provider.MediaStore.Images;
+import android.net.Uri;
+import java.util.concurrent.SynchronousQueue;
 
-public class MemesRMaiden extends Activity {
+import android.support.v7.widget.PopupMenu;
+import android.support.v7.app.AppCompatActivity;
+import android.view.MenuItem;
+import android.content.Intent;
+
+public class MemesRMaiden extends AppCompatActivity {
     private static ImageFinder imageFinder;
     private static PhraseFinder phraseFinder;
     protected static Display display;
@@ -38,6 +48,8 @@ public class MemesRMaiden extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_memes_rmaiden);
+
+        set_background_black(); // make the background black
 
         imageFinder = new ImageFinder();
         phraseFinder = new PhraseFinder(this);
@@ -61,35 +73,65 @@ public class MemesRMaiden extends Activity {
             e.printStackTrace();
         }
 
-        final Button button = (Button) findViewById(R.id.save_button);
-        button.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
+        // thank you stack overflow http://stackoverflow.com/questions/21329132/android-custom-dropdown-popup-menu
+        final FloatingActionButton menu_fab = (FloatingActionButton) findViewById(R.id.menu_fab);
+        menu_fab.setOnClickListener(new View.OnClickListener() {
+            public void onClick(final View v) {
+                PopupMenu popup = new PopupMenu(MemesRMaiden.this, menu_fab);
+                //Inflating the Popup using xml file
+                popup.getMenuInflater()
+                        .inflate(R.menu.popup_menu, popup.getMenu());
 
-                // using this stackoverflow article for alert dialog help:
-                // http://stackoverflow.com/questions/18799216/how-to-make-a-edittext-box-in-a-dialog
-                final EditText input = new EditText(v.getContext());
-                AlertDialog.Builder alertDialog = new AlertDialog.Builder(v.getContext())
-                        .setTitle("Meme File Name")
-                        .setMessage("Name Your File")
-                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int which) {
-                                saveBitmap(bg, input.getText().toString());
+                //registering popup with OnMenuItemClickListener
+                popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                    public boolean onMenuItemClick(MenuItem item) {
+                        if (item.toString().contentEquals("Save")) {
+                            for (int i = 0; i < 10; i++) {
+                                System.out.println("save");
                             }
-                        })
-                        .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int which) {
-                                // do nothing
-                            }
-                        });
-
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.MATCH_PARENT);
-                input.setLayoutParams(lp);
-                alertDialog.setView(input); // uncomment this line
-                alertDialog.show();
+                            save_meme(v);
+                        } else if (item.toString().contentEquals("Share")) {
+                            Intent shareIntent = new Intent();
+                            shareIntent.setAction(Intent.ACTION_SEND);
+                            String pathofBmp = Images.Media.insertImage(getContentResolver(), bg,"meme", null);
+                            Uri bmpUri = Uri.parse(pathofBmp);
+                            shareIntent.putExtra(Intent.EXTRA_STREAM, bmpUri);
+                            shareIntent.setType("image/jpeg");
+                            startActivity(Intent.createChooser(shareIntent, getResources().getText(R.string.send_to)));
+                        }
+                        return true;
+                    }
+                });
+                popup.show();
             }
         });
+    }
+
+    // method to open a dialog box and save a meme to the phone external storage
+    private void save_meme(View v) {
+        // using this stackoverflow article for alert dialog help:
+        // http://stackoverflow.com/questions/18799216/how-to-make-a-edittext-box-in-a-dialog
+        final EditText input = new EditText(v.getContext());
+        AlertDialog.Builder alertDialog = new AlertDialog.Builder(v.getContext())
+                .setTitle("Meme File Name")
+                .setMessage("Name Your File")
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        saveBitmap(bg, input.getText().toString());
+                    }
+                })
+                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        // do nothing
+                    }
+                });
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.MATCH_PARENT);
+        input.setLayoutParams(lp);
+        alertDialog.setView(input); // uncomment this line
+        alertDialog.show();
     }
 
     private Bitmap draw_meme(Bitmap bitmap, Canvas canvas, Paint paint) {
@@ -159,6 +201,10 @@ public class MemesRMaiden extends Activity {
         return bitmap;
     }
 
+    public void set_background_black () {
+        View view = this.getWindow().getDecorView();
+        view.setBackgroundColor(0);
+    }
 
     // when the meme only has one string, find the largest font size that fits on the image
     private int getFontSize(Paint paint, String text, Bitmap bitmap) {
