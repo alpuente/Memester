@@ -36,11 +36,19 @@ import android.support.v7.widget.PopupMenu;
 import android.support.v7.app.AppCompatActivity;
 import android.view.MenuItem;
 import android.content.Intent;
+import android.view.GestureDetector;
+import android.support.v4.view.GestureDetectorCompat;
+import android.view.MotionEvent;
+import android.content.Context;
 
 public class MemesRMaiden extends AppCompatActivity {
+
+    private static final String DEBUG_TAG = "Gestures";
+    private GestureDetectorCompat mDetector;
     private static ImageFinder imageFinder;
     private static PhraseFinder phraseFinder;
     protected static Display display;
+    Context meme_context = this; // used as context in gesture listener to start an intent
     Bitmap bg;
     Meme meme;
 
@@ -56,6 +64,7 @@ public class MemesRMaiden extends AppCompatActivity {
         meme = new Meme(phraseFinder, imageFinder);
 
         display = getWindowManager().getDefaultDisplay();
+        mDetector = new GestureDetectorCompat(this, new GestureListener());
 
         // button to save a meme. opens a dialog box which prompts user to give a file name
         // should alert them if it's a duplicate file... TODO:this
@@ -83,6 +92,8 @@ public class MemesRMaiden extends AppCompatActivity {
                         .inflate(R.menu.popup_menu, popup.getMenu());
 
                 //registering popup with OnMenuItemClickListener
+                // thank you !!! http://stackoverflow.com/questions/21329132/android-custom-dropdown-popup-menu
+                // https://developer.android.com/training/sharing/send.html
                 popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
                     public boolean onMenuItemClick(MenuItem item) {
                         if (item.toString().contentEquals("Save")) {
@@ -96,7 +107,7 @@ public class MemesRMaiden extends AppCompatActivity {
                             String pathofBmp = Images.Media.insertImage(getContentResolver(), bg,"meme", null);
                             Uri bmpUri = Uri.parse(pathofBmp);
                             shareIntent.putExtra(Intent.EXTRA_STREAM, bmpUri);
-                            shareIntent.setType("image/jpeg");
+                            shareIntent.setType("image/png");
                             startActivity(Intent.createChooser(shareIntent, getResources().getText(R.string.send_to)));
                         }
                         return true;
@@ -132,6 +143,12 @@ public class MemesRMaiden extends AppCompatActivity {
         input.setLayoutParams(lp);
         alertDialog.setView(input); // uncomment this line
         alertDialog.show();
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event){
+        this.mDetector.onTouchEvent(event);
+        return super.onTouchEvent(event);
     }
 
     private Bitmap draw_meme(Bitmap bitmap, Canvas canvas, Paint paint) {
@@ -338,6 +355,27 @@ public class MemesRMaiden extends AppCompatActivity {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    private class GestureListener extends GestureDetector.SimpleOnGestureListener {
+        private static final String DEBUG_TAG = "Gestures";
+
+        @Override
+        public boolean onDown(MotionEvent event) {
+            //Log.d(DEBUG_TAG,"onDown: " + event.toString());
+            return true;
+        }
+
+        @Override
+        public boolean onFling(MotionEvent event1, MotionEvent event2,
+                               float velocityX, float velocityY) {
+            for(int i = 0; i < 15; i++) {
+                System.out.println("fling!");
+            }
+            Intent i = new Intent(meme_context, MemesRMaiden.class);
+            startActivity(i);
+            return true;
         }
     }
 

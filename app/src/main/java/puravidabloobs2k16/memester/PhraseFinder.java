@@ -51,13 +51,22 @@ public class PhraseFinder {
                 Telephony.Sms.Outbox.DEFAULT_SORT_ORDER);
 
         int totalSMSOut = out.getCount();
+        int totalSMSIn = in.getCount();
 
         if (out.moveToFirst()) {
-            for (int i = 0; i < totalSMSOut; i++) {
+            for (int i = 0; i < totalSMSOut - 1; i++) {
                 texts.add(out.getString(1));
                 out.moveToNext();
             }
         }
+
+        if (in.moveToFirst()) {
+            for (int i = 0; i < totalSMSIn - 1; i++) {
+                texts.add(in.getString(1));
+                in.moveToNext();
+            }
+        }
+
         in.close();
         out.close();
 
