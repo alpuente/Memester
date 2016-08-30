@@ -40,6 +40,7 @@ import android.view.GestureDetector;
 import android.support.v4.view.GestureDetectorCompat;
 import android.view.MotionEvent;
 import android.content.Context;
+import android.widget.Toast;
 
 public class MemesRMaiden extends AppCompatActivity {
 
@@ -61,61 +62,69 @@ public class MemesRMaiden extends AppCompatActivity {
 
         imageFinder = new ImageFinder();
         phraseFinder = new PhraseFinder(this);
-        meme = new Meme(phraseFinder, imageFinder);
 
-        display = getWindowManager().getDefaultDisplay();
-        mDetector = new GestureDetectorCompat(this, new GestureListener());
+        if (phraseFinder.smsConversationsEmpty(this)) {
+            Toast.makeText(this.getApplicationContext(), "Sorry, cannot make a meme if you have no saved SMS conversations!", Toast.LENGTH_LONG).show();
+        } else if (imageFinder.isCameraDirectoryEmpty()) {
+            Toast.makeText(this.getApplicationContext(), "Sorry, cannot make a meme if you have no saved pictures!", Toast.LENGTH_LONG).show();
+        } else {
 
-        // button to save a meme. opens a dialog box which prompts user to give a file name
-        // should alert them if it's a duplicate file... TODO:this
-        // shout out to this stackoverflow question http://stackoverflow.com/questions/4918079/android-drawing-a-canvas-to-an-imageview
-        try {
-           bg = createBitmap(meme.image_file_name);
-            bg = bg.copy(Bitmap.Config.ARGB_8888, true);
-            Canvas canvas = new Canvas(bg);
-            Paint paint = get_paint(canvas);
-            bg = draw_meme(bg, canvas, paint);
-            //canvas.drawBitmap(bg, 0, 0, paint);
-            ImageView imageView = (ImageView) findViewById(R.id.imageView1);
-            imageView.setImageDrawable(new BitmapDrawable(getResources(), bg));
-       } catch (IOException e) {
-            e.printStackTrace();
-        }
+            meme = new Meme(phraseFinder, imageFinder);
 
-        // thank you stack overflow http://stackoverflow.com/questions/21329132/android-custom-dropdown-popup-menu
-        final FloatingActionButton menu_fab = (FloatingActionButton) findViewById(R.id.menu_fab);
-        menu_fab.setOnClickListener(new View.OnClickListener() {
-            public void onClick(final View v) {
-                PopupMenu popup = new PopupMenu(MemesRMaiden.this, menu_fab);
-                //Inflating the Popup using xml file
-                popup.getMenuInflater()
-                        .inflate(R.menu.popup_menu, popup.getMenu());
+            display = getWindowManager().getDefaultDisplay();
+            mDetector = new GestureDetectorCompat(this, new GestureListener());
 
-                //registering popup with OnMenuItemClickListener
-                // thank you !!! http://stackoverflow.com/questions/21329132/android-custom-dropdown-popup-menu
-                // https://developer.android.com/training/sharing/send.html
-                popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-                    public boolean onMenuItemClick(MenuItem item) {
-                        if (item.toString().contentEquals("Save")) {
-                            for (int i = 0; i < 10; i++) {
-                                System.out.println("save");
-                            }
-                            save_meme(v);
-                        } else if (item.toString().contentEquals("Share")) {
-                            Intent shareIntent = new Intent();
-                            shareIntent.setAction(Intent.ACTION_SEND);
-                            String pathofBmp = Images.Media.insertImage(getContentResolver(), bg,"meme", null);
-                            Uri bmpUri = Uri.parse(pathofBmp);
-                            shareIntent.putExtra(Intent.EXTRA_STREAM, bmpUri);
-                            shareIntent.setType("image/png");
-                            startActivity(Intent.createChooser(shareIntent, getResources().getText(R.string.send_to)));
-                        }
-                        return true;
-                    }
-                });
-                popup.show();
+            // button to save a meme. opens a dialog box which prompts user to give a file name
+            // should alert them if it's a duplicate file... TODO:this
+            // shout out to this stackoverflow question http://stackoverflow.com/questions/4918079/android-drawing-a-canvas-to-an-imageview
+            try {
+                bg = createBitmap(meme.image_file_name);
+                bg = bg.copy(Bitmap.Config.ARGB_8888, true);
+                Canvas canvas = new Canvas(bg);
+                Paint paint = get_paint(canvas);
+                bg = draw_meme(bg, canvas, paint);
+                //canvas.drawBitmap(bg, 0, 0, paint);
+                ImageView imageView = (ImageView) findViewById(R.id.imageView1);
+                imageView.setImageDrawable(new BitmapDrawable(getResources(), bg));
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        });
+
+            // thank you stack overflow http://stackoverflow.com/questions/21329132/android-custom-dropdown-popup-menu
+            final FloatingActionButton menu_fab = (FloatingActionButton) findViewById(R.id.menu_fab);
+            menu_fab.setOnClickListener(new View.OnClickListener() {
+                public void onClick(final View v) {
+                    PopupMenu popup = new PopupMenu(MemesRMaiden.this, menu_fab);
+                    //Inflating the Popup using xml file
+                    popup.getMenuInflater()
+                            .inflate(R.menu.popup_menu, popup.getMenu());
+
+                    //registering popup with OnMenuItemClickListener
+                    // thank you !!! http://stackoverflow.com/questions/21329132/android-custom-dropdown-popup-menu
+                    // https://developer.android.com/training/sharing/send.html
+                    popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                        public boolean onMenuItemClick(MenuItem item) {
+                            if (item.toString().contentEquals("Save")) {
+                                for (int i = 0; i < 10; i++) {
+                                    System.out.println("save");
+                                }
+                                save_meme(v);
+                            } else if (item.toString().contentEquals("Share")) {
+                                Intent shareIntent = new Intent();
+                                shareIntent.setAction(Intent.ACTION_SEND);
+                                String pathofBmp = Images.Media.insertImage(getContentResolver(), bg, "meme", null);
+                                Uri bmpUri = Uri.parse(pathofBmp);
+                                shareIntent.putExtra(Intent.EXTRA_STREAM, bmpUri);
+                                shareIntent.setType("image/png");
+                                startActivity(Intent.createChooser(shareIntent, getResources().getText(R.string.send_to)));
+                            }
+                            return true;
+                        }
+                    });
+                    popup.show();
+                }
+            });
+        }
     }
 
     // method to open a dialog box and save a meme to the phone external storage
@@ -358,6 +367,7 @@ public class MemesRMaiden extends AppCompatActivity {
         }
     }
 
+    // https://developer.android.com/training/gestures/detector.html
     private class GestureListener extends GestureDetector.SimpleOnGestureListener {
         private static final String DEBUG_TAG = "Gestures";
 

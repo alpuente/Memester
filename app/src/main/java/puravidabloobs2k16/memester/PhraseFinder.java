@@ -16,6 +16,24 @@ import java.util.Random;
 public class PhraseFinder {
     private List<String> texts;
 
+    // method to check if the sms inbox and outbox are empty
+    protected boolean smsConversationsEmpty(Context context) {
+        ContentResolver cr = context.getContentResolver();
+
+        Cursor in = cr.query(Telephony.Sms.Inbox.CONTENT_URI,
+                new String[] {Telephony.Sms.Inbox.ADDRESS, Telephony.Sms.Inbox.BODY},
+                null,
+                null,
+                Telephony.Sms.Inbox.DEFAULT_SORT_ORDER);
+
+        Cursor out = cr.query(Telephony.Sms.Sent.CONTENT_URI,
+                new String[] {Telephony.Sms.Sent.ADDRESS, Telephony.Sms.Sent.BODY},
+                null,
+                null,
+                Telephony.Sms.Outbox.DEFAULT_SORT_ORDER);
+        return (in.getCount() == 0) && (out.getCount() == 0); // if no texts were found, return 0
+    }
+
     // constructor takes in a context object and gets the phone's sent sms messages
     protected PhraseFinder(Context context) {
         this.texts = getAllSms(context);
