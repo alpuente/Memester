@@ -45,7 +45,8 @@ import android.widget.Toast;
 public class MemesRMaiden extends AppCompatActivity {
 
     private static final String DEBUG_TAG = "Gestures";
-    private GestureDetectorCompat mDetector;
+    //private GestureDetectorCompat mDetector;
+    private SwipeListener mDetector;
     private static ImageFinder imageFinder;
     private static PhraseFinder phraseFinder;
     protected static Display display;
@@ -72,7 +73,7 @@ public class MemesRMaiden extends AppCompatActivity {
             meme = new Meme(phraseFinder, imageFinder);
 
             display = getWindowManager().getDefaultDisplay();
-            mDetector = new GestureDetectorCompat(this, new GestureListener());
+            mDetector = new SwipeListener(this);
 
             // button to save a meme. opens a dialog box which prompts user to give a file name
             // should alert them if it's a duplicate file... TODO:this
@@ -156,7 +157,7 @@ public class MemesRMaiden extends AppCompatActivity {
 
     @Override
     public boolean onTouchEvent(MotionEvent event){
-        this.mDetector.onTouchEvent(event);
+        this.mDetector.gestureDetector.onTouchEvent(event);
         return super.onTouchEvent(event);
     }
 
@@ -174,10 +175,15 @@ public class MemesRMaiden extends AppCompatActivity {
             String[] texts = splitText(meme.message);
             String text1 = texts[0];
             String text2 = texts[1];
-            font_size = getFontForTwo(paint, text1, text2, bitmap);
-            System.out.println("font_size " + font_size);
-            paint.setTextSize(font_size);
-            System.out.println("bitmap width " + bitmap.getWidth() + " text1 width " + paint.measureText(text1) + " text2 width " + paint.measureText(text2));
+            //font_size = getFontForTwo(paint, text1, text2, bitmap);
+            while ((font_size = getFontForTwo(paint, text1, text2, bitmap)) < 80) {
+                texts = splitText(text1);
+                text1 = texts[0];
+                text2 = texts[1];
+            }
+            //System.out.println("font_size " + font_size);
+            //paint.setTextSize(font_size);
+            //System.out.println("bitmap width " + bitmap.getWidth() + " text1 width " + paint.measureText(text1) + " text2 width " + paint.measureText(text2));
             int y_offset;
             if (font_size >= 100) {
                 y_offset = 8;
@@ -352,9 +358,6 @@ public class MemesRMaiden extends AppCompatActivity {
     public void saveBitmap(Bitmap bitmap, String filename) {
         if (isExternalStorageWritable()) {
             try {
-                //String path = Environment.getExternalStoragePublicDirectory(
-                //        Environment.DIRECTORY_DCIM + "/Pictures");
-                //File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES) + "/" + filename;
                 File file = new File(Environment.getExternalStoragePublicDirectory(
                         Environment.DIRECTORY_PICTURES), filename + ".png");
                 for (int i = 0; i < 15; i++) {
@@ -367,25 +370,53 @@ public class MemesRMaiden extends AppCompatActivity {
         }
     }
 
-    // https://developer.android.com/training/gestures/detector.html
-    private class GestureListener extends GestureDetector.SimpleOnGestureListener {
+    // used this as a resource!
+    // http://stackoverflow.com/questions/4139288/android-how-to-handle-right-to-left-swipe-gestures
+    private class SwipeListener implements View.OnTouchListener{
         private static final String DEBUG_TAG = "Gestures";
 
-        @Override
-        public boolean onDown(MotionEvent event) {
-            //Log.d(DEBUG_TAG,"onDown: " + event.toString());
-            return true;
+        private final GestureDetector gestureDetector;
+
+        public SwipeListener(Context context) {
+            gestureDetector = new GestureDetector(context, new SwipeGestureListener());
         }
 
         @Override
-        public boolean onFling(MotionEvent event1, MotionEvent event2,
-                               float velocityX, float velocityY) {
-            for(int i = 0; i < 15; i++) {
-                System.out.println("fling!");
+        public boolean onTouch(View v, MotionEvent event) {
+            return gestureDetector.onTouchEvent(event);
+        }
+
+        public final class SwipeGestureListener extends GestureDetector.SimpleOnGestureListener {
+            int diff_threshold = 100;
+
+            @Override
+            public boolean onDown(MotionEvent e) {
+                return true;
             }
-            Intent i = new Intent(meme_context, MemesRMaiden.class);
-            startActivity(i);
-            return true;
+
+            @Override
+            public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                try {
+                    float ydiff = e2.getY() - e1.getY();
+                    float xdiff = e2.getX() - e1.getX();
+                    if (Math.abs(xdiff) > Math.abs(ydiff)) { // horizontal fling
+                        if (xdiff > 0) {
+                            onRightFling();
+                        } else {
+                            onLeftFling();
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                return true;
+            }
+
+            public void onRightFling() {
+            }
+
+            public void onLeftFling() {
+            }
         }
     }
 
