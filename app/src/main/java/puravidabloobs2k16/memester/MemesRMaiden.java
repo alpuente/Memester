@@ -50,9 +50,10 @@ public class MemesRMaiden extends AppCompatActivity {
     private static PhraseFinder phraseFinder;
     protected static Display display;
     Context meme_context = this; // used as context in gesture listener to start an intent
-    Bitmap bg;
-    Meme meme;
-    ArrayList<Meme> memes; // store previous memes
+    private Bitmap global_bitmap;
+    private Meme meme;
+    private static ArrayList<Meme> g_memes; // store previous memes
+    private static int current_meme_index;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,6 +64,8 @@ public class MemesRMaiden extends AppCompatActivity {
 
         imageFinder = new ImageFinder();
         phraseFinder = new PhraseFinder(this);
+        g_memes = new ArrayList<>();
+        current_meme_index = 0;
 
         if (phraseFinder.smsConversationsEmpty(this)) {
             Toast.makeText(this.getApplicationContext(), "Sorry, cannot make a meme if you have no saved SMS conversations!", Toast.LENGTH_LONG).show();
@@ -70,7 +73,8 @@ public class MemesRMaiden extends AppCompatActivity {
             Toast.makeText(this.getApplicationContext(), "Sorry, cannot make a meme if you have no saved pictures!", Toast.LENGTH_LONG).show();
         } else {
 
-            meme = makeMeme();
+            meme = new Meme(phraseFinder, imageFinder); // don't call makeMeme, because current_meme_index should still be 0
+            g_memes.add(meme); // add this meme at index 0
 
             display = getWindowManager().getDefaultDisplay();
             mDetector = new SwipeListener(this);
@@ -96,14 +100,11 @@ public class MemesRMaiden extends AppCompatActivity {
                     popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
                         public boolean onMenuItemClick(MenuItem item) {
                             if (item.toString().contentEquals("Save")) {
-                                for (int i = 0; i < 10; i++) {
-                                    System.out.println("save");
-                                }
                                 save_meme(v);
                             } else if (item.toString().contentEquals("Share")) {
                                 Intent shareIntent = new Intent();
                                 shareIntent.setAction(Intent.ACTION_SEND);
-                                String pathofBmp = Images.Media.insertImage(getContentResolver(), bg, "meme", null);
+                                String pathofBmp = Images.Media.insertImage(getContentResolver(), global_bitmap, "meme", null);
                                 Uri bmpUri = Uri.parse(pathofBmp);
                                 shareIntent.putExtra(Intent.EXTRA_STREAM, bmpUri);
                                 shareIntent.setType("image/png");
@@ -120,14 +121,14 @@ public class MemesRMaiden extends AppCompatActivity {
 
     private void set_imageview() {
         try {
-            bg = createBitmap(meme.image_file_name);
-            bg = bg.copy(Bitmap.Config.ARGB_8888, true);
-            Canvas canvas = new Canvas(bg);
+            global_bitmap = createBitmap(meme.image_file_name);
+            global_bitmap = global_bitmap.copy(Bitmap.Config.ARGB_8888, true);
+            Canvas canvas = new Canvas(global_bitmap);
             Paint paint = get_paint(canvas);
-            bg = draw_meme(bg, canvas, paint);
-            //canvas.drawBitmap(bg, 0, 0, paint);
+            global_bitmap = draw_meme(global_bitmap, canvas, paint);
+            //canvas.drawBitmap(global_bitmap, 0, 0, paint);
             ImageView imageView = (ImageView) findViewById(R.id.imageView1);
-            imageView.setImageDrawable(new BitmapDrawable(getResources(), bg));
+            imageView.setImageDrawable(new BitmapDrawable(getResources(), global_bitmap));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -143,7 +144,7 @@ public class MemesRMaiden extends AppCompatActivity {
                 .setMessage("Name Your File")
                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
-                        saveBitmap(bg, input.getText().toString());
+                        saveBitmap(global_bitmap, input.getText().toString());
                     }
                 })
                 .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
@@ -180,15 +181,11 @@ public class MemesRMaiden extends AppCompatActivity {
             String[] texts = splitText(meme.message);
             String text1 = texts[0];
             String text2 = texts[1];
-            //font_size = getFontForTwo(paint, text1, text2, bitmap);
             while ((font_size = getFontForTwo(paint, text1, text2, bitmap)) < 80) {
                 texts = splitText(text1);
                 text1 = texts[0];
                 text2 = texts[1];
             }
-            //System.out.println("font_size " + font_size);
-            //paint.setTextSize(font_size);
-            //System.out.println("bitmap width " + bitmap.getWidth() + " text1 width " + paint.measureText(text1) + " text2 width " + paint.measureText(text2));
             int y_offset;
             if (font_size >= 100) {
                 y_offset = 8;
@@ -247,7 +244,6 @@ public class MemesRMaiden extends AppCompatActivity {
     private int getFontSize(Paint paint, String text, Bitmap bitmap) {
         int font_size = 100;
         while (paint.measureText(text) > bitmap.getWidth()) {
-            System.out.println("font size " + font_size);
             paint.setTextSize(font_size);
             font_size -= 1;
         }
@@ -346,8 +342,15 @@ public class MemesRMaiden extends AppCompatActivity {
     }
 
     // creates a new Meme object from global ImageFinder and PhraseFinder objects
+    // add the meme to the list at the current index, overwrite what was there if necessary
     protected static Meme makeMeme() {
-        return new Meme(phraseFinder, imageFinder);
+        current_meme_index++;
+        Meme new_meme = new Meme(phraseFinder, imageFinder);
+        g_memes.add(current_meme_index, new_meme);
+        for (int i = 0; i < 15; i++) {
+            System.out.println("current meme index " + current_meme_index);
+        }
+        return new_meme;
     }
 
 
@@ -373,6 +376,18 @@ public class MemesRMaiden extends AppCompatActivity {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    private Meme get_previous_meme() {
+        if (current_meme_index == 0) { // if this is the first viewed meme, just return the same meme
+            for (int i = 0; i < 15; i++) {
+                System.out.println("same meme ");
+            }
+            return meme;
+        } else { // else, get previous meme
+            current_meme_index--;
+            return g_memes.get(current_meme_index);
         }
     }
 
@@ -418,10 +433,15 @@ public class MemesRMaiden extends AppCompatActivity {
                 return true;
             }
 
-            public void onRightFling() {
+            public void onRightFling() { // if going backward, get previous meme if available
+                meme = get_previous_meme();
+                for (int i = 0; i < 15; i++) {
+                    System.out.println("getting new meme at index " + current_meme_index);
+                }
+                set_imageview();
             }
 
-            public void onLeftFling() {
+            public void onLeftFling() { // if going forward, make a new meme
                 meme = makeMeme();
                 set_imageview();
             }
