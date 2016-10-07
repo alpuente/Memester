@@ -1,6 +1,5 @@
 package puravidabloobs2k16.memester;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.res.AssetManager;
@@ -19,11 +18,11 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Display;
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Locale;
 import android.graphics.drawable.BitmapDrawable;
 import java.io.FileOutputStream;
@@ -53,6 +52,7 @@ public class MemesRMaiden extends AppCompatActivity {
     Context meme_context = this; // used as context in gesture listener to start an intent
     Bitmap bg;
     Meme meme;
+    ArrayList<Meme> memes; // store previous memes
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,7 +70,7 @@ public class MemesRMaiden extends AppCompatActivity {
             Toast.makeText(this.getApplicationContext(), "Sorry, cannot make a meme if you have no saved pictures!", Toast.LENGTH_LONG).show();
         } else {
 
-            meme = new Meme(phraseFinder, imageFinder);
+            meme = makeMeme();
 
             display = getWindowManager().getDefaultDisplay();
             mDetector = new SwipeListener(this);
@@ -78,18 +78,8 @@ public class MemesRMaiden extends AppCompatActivity {
             // button to save a meme. opens a dialog box which prompts user to give a file name
             // should alert them if it's a duplicate file... TODO:this
             // shout out to this stackoverflow question http://stackoverflow.com/questions/4918079/android-drawing-a-canvas-to-an-imageview
-            try {
-                bg = createBitmap(meme.image_file_name);
-                bg = bg.copy(Bitmap.Config.ARGB_8888, true);
-                Canvas canvas = new Canvas(bg);
-                Paint paint = get_paint(canvas);
-                bg = draw_meme(bg, canvas, paint);
-                //canvas.drawBitmap(bg, 0, 0, paint);
-                ImageView imageView = (ImageView) findViewById(R.id.imageView1);
-                imageView.setImageDrawable(new BitmapDrawable(getResources(), bg));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+
+            set_imageview();
 
             // thank you stack overflow http://stackoverflow.com/questions/21329132/android-custom-dropdown-popup-menu
             final FloatingActionButton menu_fab = (FloatingActionButton) findViewById(R.id.menu_fab);
@@ -125,6 +115,21 @@ public class MemesRMaiden extends AppCompatActivity {
                     popup.show();
                 }
             });
+        }
+    }
+
+    private void set_imageview() {
+        try {
+            bg = createBitmap(meme.image_file_name);
+            bg = bg.copy(Bitmap.Config.ARGB_8888, true);
+            Canvas canvas = new Canvas(bg);
+            Paint paint = get_paint(canvas);
+            bg = draw_meme(bg, canvas, paint);
+            //canvas.drawBitmap(bg, 0, 0, paint);
+            ImageView imageView = (ImageView) findViewById(R.id.imageView1);
+            imageView.setImageDrawable(new BitmapDrawable(getResources(), bg));
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -193,12 +198,12 @@ public class MemesRMaiden extends AppCompatActivity {
             canvas.drawText(text1, x_position, bitmap.getHeight() / y_offset + y_position, paint);
             canvas.drawText(text2, x_position, bitmap.getHeight() + y_position - (bitmap.getWidth() / 15), paint);
         } else {
-            int y_offset;
+/*            int y_offset;
             if (font_size >= 100) {
                 y_offset = 8;
             } else {
                 y_offset = 10;
-            }
+            }*/
             canvas.drawText(meme.message, x_position, bitmap.getHeight() / 8 + y_position, paint);
         }
         return bitmap;
@@ -314,6 +319,7 @@ public class MemesRMaiden extends AppCompatActivity {
             int width_ratio = Math.round((float) width / (float) display_width);
             options.inSampleSize = width_ratio;
         }
+        
         options.inJustDecodeBounds = false;
         return options;
     }
@@ -360,9 +366,9 @@ public class MemesRMaiden extends AppCompatActivity {
             try {
                 File file = new File(Environment.getExternalStoragePublicDirectory(
                         Environment.DIRECTORY_PICTURES), filename + ".png");
-                for (int i = 0; i < 15; i++) {
+/*                for (int i = 0; i < 15; i++) {
                     System.out.println("path is " + file.getPath().toString());
-                }
+                }*/
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, new FileOutputStream(file));
             } catch (Exception e) {
                 e.printStackTrace();
@@ -416,6 +422,8 @@ public class MemesRMaiden extends AppCompatActivity {
             }
 
             public void onLeftFling() {
+                meme = makeMeme();
+                set_imageview();
             }
         }
     }
