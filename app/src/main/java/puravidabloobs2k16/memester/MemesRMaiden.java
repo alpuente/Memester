@@ -4,16 +4,12 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.Typeface;
-import android.media.ExifInterface;
 import android.os.Bundle;
-import android.os.Environment;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Display;
@@ -25,12 +21,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Locale;
 import android.graphics.drawable.BitmapDrawable;
-import java.io.FileOutputStream;
-import java.io.File;
 import android.provider.MediaStore.Images;
 import android.net.Uri;
-
-
 import android.support.v7.widget.PopupMenu;
 import android.view.MenuItem;
 import android.content.Intent;
@@ -38,18 +30,14 @@ import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.content.Context;
 import android.widget.Toast;
-
 import android.graphics.Rect;
 
 public class MemesRMaiden extends AppCompatActivity {
 
-    private static final String DEBUG_TAG = "Gestures";
-    //private GestureDetectorCompat mDetector;
     private SwipeListener mDetector;
     private static ImageFinder imageFinder;
     private static PhraseFinder phraseFinder;
     protected static Display display;
-    Context meme_context = this; // used as context in gesture listener to start an intent
     private Bitmap global_bitmap;
     private Meme meme;
     private static ArrayList<Meme> g_memes; // store previous memes
@@ -79,11 +67,9 @@ public class MemesRMaiden extends AppCompatActivity {
             display = getWindowManager().getDefaultDisplay();
             mDetector = new SwipeListener(this);
 
-            // button to save a meme. opens a dialog box which prompts user to give a file name
-            // should alert them if it's a duplicate file... TODO:this
+            setGlobalBitmap();
             // shout out to this stackoverflow question http://stackoverflow.com/questions/4918079/android-drawing-a-canvas-to-an-imageview
-
-            set_imageview();
+            setImageView();
 
             // thank you stack overflow http://stackoverflow.com/questions/21329132/android-custom-dropdown-popup-menu
             final FloatingActionButton menu_fab = (FloatingActionButton) findViewById(R.id.menu_fab);
@@ -119,19 +105,24 @@ public class MemesRMaiden extends AppCompatActivity {
         }
     }
 
-    private void set_imageview() {
+    // sets the global bitmap variable using the global meme image
+    private void setGlobalBitmap() {
         try {
-            global_bitmap = createBitmap(meme.image_file_name);
+            global_bitmap = BitmapUtils.createBitmap(meme.image_file_name);
             global_bitmap = global_bitmap.copy(Bitmap.Config.ARGB_8888, true);
-            Canvas canvas = new Canvas(global_bitmap);
-            Paint paint = get_paint(canvas);
-            global_bitmap = draw_meme(global_bitmap, canvas, paint);
-            //canvas.drawBitmap(global_bitmap, 0, 0, paint);
-            ImageView imageView = (ImageView) findViewById(R.id.imageView1);
-            imageView.setImageDrawable(new BitmapDrawable(getResources(), global_bitmap));
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    // sets the imageview drawable with the global bitmap and
+    // draws the meme to the imageview
+    private void setImageView() {
+        Canvas canvas = new Canvas(global_bitmap);
+        Paint paint = getPaint(canvas);
+        global_bitmap = drawText(paint, global_bitmap, canvas);
+        ImageView imageView = (ImageView) findViewById(R.id.imageView1);
+        imageView.setImageDrawable(new BitmapDrawable(getResources(), global_bitmap));
     }
 
     // method to open a dialog box and save a meme to the phone external storage
@@ -144,7 +135,7 @@ public class MemesRMaiden extends AppCompatActivity {
                 .setMessage("Name Your File")
                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
-                        saveBitmap(global_bitmap, input.getText().toString());
+                        BitmapUtils.saveBitmap(global_bitmap, input.getText().toString());
                     }
                 })
                 .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
@@ -167,46 +158,30 @@ public class MemesRMaiden extends AppCompatActivity {
         return super.onTouchEvent(event);
     }
 
-    private Bitmap draw_meme(Bitmap bitmap, Canvas canvas, Paint paint) {
-        Point screen_size = getScreenSize();
-        int y_position = getYPosition(screen_size.y, bitmap.getHeight());
-        int x_position = getXPosition(screen_size.x, bitmap.getWidth());
-        return draw_text(paint, bitmap, canvas, 0, 0);
-    }
-
     // figure out what y position to draw the top text at
     // based on the value returned by paint.getTextBounds
     private int getTopYTextPosition(Rect rect,  Bitmap bitmap) {
-        // y position will be an eighth of the bitmap's height + the height of the rectangle
-        for (int i = 0; i < 10; i++) {
-            System.out.println("height is " + (rect.bottom - rect.top));
-        }
         return (rect.bottom - rect.top);
     }
 
+    // figure out what y position to draw the bottom text at
+    // based on the value returned by paint.getTextBounds
     private int getBottomYTextPosition(Rect rect, Bitmap bitmap) {
         return (bitmap.getHeight() - (int) (Math.floor(.3 * (rect.bottom - rect.top))));
     }
 
-    private Bitmap draw_text(Paint paint, Bitmap bitmap, Canvas canvas, int x_position, int y_position) {
+    // draws text to a bitmap
+    private Bitmap drawText(Paint paint, Bitmap bitmap, Canvas canvas) {
         int font_size = getFontSize(paint, meme.message, bitmap);
         if (font_size < 80) {
             String[] texts = splitText(meme.message);
             String text1 = texts[0];
             String text2 = texts[1];
-            while ((font_size = getFontForTwo(paint, text1, text2, bitmap)) < 80) {
+            while ((font_size = getFontSize(paint, text1, text2, bitmap)) < 80) {
                 texts = splitText(text1);
                 text1 = texts[0];
                 text2 = texts[1];
             }
-            int y_offset;
-            if (font_size >= 100) {
-                y_offset = 8;
-            } else {
-                y_offset = 10;
-            }
-            //canvas.drawText(text1, x_position, bitmap.getHeight() / y_offset + y_position, paint);
-            //canvas.drawText(text2, x_position, bitmap.getHeight() + y_position - (bitmap.getWidth() / 15), paint);
             Rect rect = new Rect();
             paint.getTextBounds(text1, 0, text1.length() - 1, rect);
             int topYPosition = getTopYTextPosition(rect, bitmap);
@@ -215,25 +190,17 @@ public class MemesRMaiden extends AppCompatActivity {
             int bottomYPosition = getBottomYTextPosition(rect, bitmap);
             canvas.drawText(text2, 0, bottomYPosition, paint);
         } else {
-/*            int y_offset;
-            if (font_size >= 100) {
-                y_offset = 8;
-            } else {
-                y_offset = 10;
-            }*/
             Rect rect = new Rect();
             paint.getTextBounds(meme.message, 0, meme.message.length() - 1, rect);
             int yPosition = getTopYTextPosition(rect, bitmap);
-            //canvas.drawText(meme.message, x_position, bitmap.getHeight() / 8 + y_position, paint);
-            canvas.drawText(meme.message, x_position, yPosition, paint);
+            canvas.drawText(meme.message, 0, yPosition, paint);
         }
         return bitmap;
     }
 
     // method to init a new paint for a canvas and return it
-    private Paint get_paint(Canvas canvas) {
+    private Paint getPaint(Canvas canvas) {
         Paint paint = new Paint();
-        //canvas.drawPaint(paint);
         paint.setColor(Color.WHITE);
         int text_size = 115;
         paint.setTextSize(text_size);
@@ -247,16 +214,6 @@ public class MemesRMaiden extends AppCompatActivity {
         AssetManager am = this.getApplicationContext().getAssets();
         return Typeface.createFromAsset(am,
                 String.format(Locale.US, "fonts/%s", "Coda-Heavy.ttf"));
-    }
-
-    //make a bitmap from an image file
-    private Bitmap createBitmap(String file_name) throws IOException {
-        Point display_size = getScreenSize();
-        Bitmap bitmap = BitmapFactory.decodeFile(file_name, getSampleSize(display_size.x, file_name));
-        if (isHorizontal(file_name)) { // if the image is horizontal
-            bitmap = rotateBitmap(bitmap, 90); // rotate it by 90 degrees
-        }
-        return bitmap;
     }
 
     public void set_background_black () {
@@ -275,7 +232,7 @@ public class MemesRMaiden extends AppCompatActivity {
     }
 
     // when the meme's texts are split, find the largest font size that fits on the image
-    private int getFontForTwo(Paint paint, String text1, String text2, Bitmap bitmap) {
+    private int getFontSize(Paint paint, String text1, String text2, Bitmap bitmap) {
         int font_size = 115;
         paint.setTextSize(font_size);
         while (paint.measureText(text1) > bitmap.getWidth() || paint.measureText(text2) > bitmap.getWidth()) {
@@ -285,16 +242,6 @@ public class MemesRMaiden extends AppCompatActivity {
         return font_size;
     }
 
-    // gets the desired y position to center the image on the canvas
-    private int getYPosition(int display_height, int image_height) {
-        return (display_height - image_height) / 2;
-    }
-
-    // gets the desired x position to center the image on the canvas
-    private int getXPosition(int display_width, int image_width) {
-        return (display_width - image_width) / 2;
-    }
-
     // split a text in (about) half at whitespace
     private String[] splitText(String text) {
         int split_index = text.length() / 2;
@@ -302,7 +249,6 @@ public class MemesRMaiden extends AppCompatActivity {
         // get the middle index and check if it's a space
         // if not, keep decrementing the index until a space is found or the index is 0
         while (split_index >= 0 && text.charAt(split_index) != ' ') {
-            System.out.println("char at " + split_index + " is " + text.charAt(split_index));
             split_index -= 1;
         }
         if (split_index == -1 ) {
@@ -316,7 +262,6 @@ public class MemesRMaiden extends AppCompatActivity {
             texts[0] = firstHalf;
             texts[1] = secondHalf;
         } else {
-            System.out.println("INDEX " + split_index);
             String firstHalf = text.substring(0, split_index);
             String secondHalf = text.substring(split_index + 1, text.length());
             texts = new String[2];
@@ -326,40 +271,8 @@ public class MemesRMaiden extends AppCompatActivity {
         return texts;
     }
 
-    // checks if the image is bigger than the display size
-    // returns a the ratio between the image width and display width for resizing
-    // used this tutorial http://www.informit.com/articles/article.aspx?p=2143148&seqNum=2u
-    // TODO: incorporate height into this
-    private BitmapFactory.Options getSampleSize(int display_width, String file_name) {
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true;
-        BitmapFactory.decodeFile(file_name, options);
-        int width = options.outWidth;
-        if (width > display_width) {
-            int width_ratio = Math.round((float) width / (float) display_width);
-            options.inSampleSize = width_ratio;
-        }
-        
-        options.inJustDecodeBounds = false;
-        return options;
-    }
-
-    // checks if an image is horizontal
-    private boolean isHorizontal(String file_name) throws IOException {
-        ExifInterface exif = new ExifInterface(file_name);
-        return exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, 1) == 6;
-    }
-
-    // rotates a bitmap
-    private Bitmap rotateBitmap(Bitmap source, float angle)
-    {
-        Matrix matrix = new Matrix();
-        matrix.postRotate(angle);
-        return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
-    }
-
     // gets the size of the screen, returning it as a point
-    private Point getScreenSize() {
+    protected static Point getScreenSize() {
         Point point = new Point();
         display.getSize(point);
         return point;
@@ -371,43 +284,11 @@ public class MemesRMaiden extends AppCompatActivity {
         current_meme_index++;
         Meme new_meme = new Meme(phraseFinder, imageFinder);
         g_memes.add(current_meme_index, new_meme);
-        for (int i = 0; i < 15; i++) {
-            System.out.println("current meme index " + current_meme_index);
-        }
         return new_meme;
-    }
-
-
-    // src: https://developer.android.com/training/basics/data-storage/files.html
-    /* Checks if external storage is available for read and write */
-    public boolean isExternalStorageWritable() {
-        String state = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(state)) {
-            return true;
-        }
-        return false;
-    }
-
-    public void saveBitmap(Bitmap bitmap, String filename) {
-        if (isExternalStorageWritable()) {
-            try {
-                File file = new File(Environment.getExternalStoragePublicDirectory(
-                        Environment.DIRECTORY_PICTURES), filename + ".png");
-/*                for (int i = 0; i < 15; i++) {
-                    System.out.println("path is " + file.getPath().toString());
-                }*/
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, new FileOutputStream(file));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
     }
 
     private Meme get_previous_meme() {
         if (current_meme_index == 0) { // if this is the first viewed meme, just return the same meme
-            for (int i = 0; i < 15; i++) {
-                System.out.println("same meme ");
-            }
             return meme;
         } else { // else, get previous meme
             current_meme_index--;
@@ -459,15 +340,14 @@ public class MemesRMaiden extends AppCompatActivity {
 
             public void onRightFling() { // if going backward, get previous meme if available
                 meme = get_previous_meme();
-                for (int i = 0; i < 15; i++) {
-                    System.out.println("getting new meme at index " + current_meme_index);
-                }
-                set_imageview();
+                setGlobalBitmap();
+                setImageView();
             }
 
             public void onLeftFling() { // if going forward, make a new meme
                 meme = makeMeme();
-                set_imageview();
+                setGlobalBitmap();
+                setImageView();
             }
         }
     }
