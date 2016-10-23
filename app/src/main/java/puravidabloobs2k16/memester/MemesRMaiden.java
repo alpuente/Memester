@@ -29,17 +29,17 @@ import java.io.FileOutputStream;
 import java.io.File;
 import android.provider.MediaStore.Images;
 import android.net.Uri;
-import java.util.concurrent.SynchronousQueue;
+
 
 import android.support.v7.widget.PopupMenu;
-import android.support.v7.app.AppCompatActivity;
 import android.view.MenuItem;
 import android.content.Intent;
 import android.view.GestureDetector;
-import android.support.v4.view.GestureDetectorCompat;
 import android.view.MotionEvent;
 import android.content.Context;
 import android.widget.Toast;
+
+import android.graphics.Rect;
 
 public class MemesRMaiden extends AppCompatActivity {
 
@@ -171,8 +171,21 @@ public class MemesRMaiden extends AppCompatActivity {
         Point screen_size = getScreenSize();
         int y_position = getYPosition(screen_size.y, bitmap.getHeight());
         int x_position = getXPosition(screen_size.x, bitmap.getWidth());
-        //canvas.drawBitmap(bitmap, x_position, y_position, paint);
         return draw_text(paint, bitmap, canvas, 0, 0);
+    }
+
+    // figure out what y position to draw the top text at
+    // based on the value returned by paint.getTextBounds
+    private int getTopYTextPosition(Rect rect,  Bitmap bitmap) {
+        // y position will be an eighth of the bitmap's height + the height of the rectangle
+        for (int i = 0; i < 10; i++) {
+            System.out.println("height is " + (rect.bottom - rect.top));
+        }
+        return (rect.bottom - rect.top);
+    }
+
+    private int getBottomYTextPosition(Rect rect, Bitmap bitmap) {
+        return (bitmap.getHeight() - (int) (Math.floor(.3 * (rect.bottom - rect.top))));
     }
 
     private Bitmap draw_text(Paint paint, Bitmap bitmap, Canvas canvas, int x_position, int y_position) {
@@ -192,8 +205,15 @@ public class MemesRMaiden extends AppCompatActivity {
             } else {
                 y_offset = 10;
             }
-            canvas.drawText(text1, x_position, bitmap.getHeight() / y_offset + y_position, paint);
-            canvas.drawText(text2, x_position, bitmap.getHeight() + y_position - (bitmap.getWidth() / 15), paint);
+            //canvas.drawText(text1, x_position, bitmap.getHeight() / y_offset + y_position, paint);
+            //canvas.drawText(text2, x_position, bitmap.getHeight() + y_position - (bitmap.getWidth() / 15), paint);
+            Rect rect = new Rect();
+            paint.getTextBounds(text1, 0, text1.length() - 1, rect);
+            int topYPosition = getTopYTextPosition(rect, bitmap);
+            canvas.drawText(text1, 0, topYPosition, paint);
+            paint.getTextBounds(text2, 0, text2.length() - 1, rect);
+            int bottomYPosition = getBottomYTextPosition(rect, bitmap);
+            canvas.drawText(text2, 0, bottomYPosition, paint);
         } else {
 /*            int y_offset;
             if (font_size >= 100) {
@@ -201,7 +221,11 @@ public class MemesRMaiden extends AppCompatActivity {
             } else {
                 y_offset = 10;
             }*/
-            canvas.drawText(meme.message, x_position, bitmap.getHeight() / 8 + y_position, paint);
+            Rect rect = new Rect();
+            paint.getTextBounds(meme.message, 0, meme.message.length() - 1, rect);
+            int yPosition = getTopYTextPosition(rect, bitmap);
+            //canvas.drawText(meme.message, x_position, bitmap.getHeight() / 8 + y_position, paint);
+            canvas.drawText(meme.message, x_position, yPosition, paint);
         }
         return bitmap;
     }
@@ -294,7 +318,7 @@ public class MemesRMaiden extends AppCompatActivity {
         } else {
             System.out.println("INDEX " + split_index);
             String firstHalf = text.substring(0, split_index);
-            String secondHalf = text.substring(split_index, text.length());
+            String secondHalf = text.substring(split_index + 1, text.length());
             texts = new String[2];
             texts[0] = firstHalf;
             texts[1] = secondHalf;
