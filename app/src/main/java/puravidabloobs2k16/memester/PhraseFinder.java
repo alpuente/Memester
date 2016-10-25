@@ -73,14 +73,14 @@ public class PhraseFinder {
 
         if (out.moveToFirst()) {
             for (int i = 0; i < totalSMSOut - 1; i++) {
-                texts.add(out.getString(1));
+                texts.add(out.getString(1).toUpperCase());
                 out.moveToNext();
             }
         }
 
         if (in.moveToFirst()) {
             for (int i = 0; i < totalSMSIn - 1; i++) {
-                texts.add(in.getString(1));
+                texts.add(in.getString(1).toUpperCase());
                 in.moveToNext();
             }
         }

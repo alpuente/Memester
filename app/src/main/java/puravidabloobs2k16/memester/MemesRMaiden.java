@@ -119,7 +119,7 @@ public class MemesRMaiden extends AppCompatActivity {
     // draws the meme to the imageview
     private void setImageView() {
         Canvas canvas = new Canvas(global_bitmap);
-        Paint paint = getPaint(canvas);
+        Paint paint = getPaint();
         global_bitmap = drawText(paint, global_bitmap, canvas);
         ImageView imageView = (ImageView) findViewById(R.id.imageView1);
         imageView.setImageDrawable(new BitmapDrawable(getResources(), global_bitmap));
@@ -172,40 +172,57 @@ public class MemesRMaiden extends AppCompatActivity {
 
     // draws text to a bitmap
     private Bitmap drawText(Paint paint, Bitmap bitmap, Canvas canvas) {
-        int font_size = getFontSize(paint, meme.message, bitmap);
+        Paint strokePaint = getStrokePaint();
+        int font_size = getFontSize(paint, strokePaint, meme.message, bitmap);
         if (font_size < 80) {
             String[] texts = splitText(meme.message);
             String text1 = texts[0];
             String text2 = texts[1];
-            while ((font_size = getFontSize(paint, text1, text2, bitmap)) < 80) {
+            while ((font_size ) < 80) {
                 texts = splitText(text1);
                 text1 = texts[0];
                 text2 = texts[1];
+                font_size = getFontSize(paint, strokePaint, text1, text2, bitmap);
             }
             Rect rect = new Rect();
             paint.getTextBounds(text1, 0, text1.length() - 1, rect);
             int topYPosition = getTopYTextPosition(rect, bitmap);
+            canvas.drawText(text1, 0, topYPosition, strokePaint);
             canvas.drawText(text1, 0, topYPosition, paint);
             paint.getTextBounds(text2, 0, text2.length() - 1, rect);
             int bottomYPosition = getBottomYTextPosition(rect, bitmap);
+            canvas.drawText(text2, 0, bottomYPosition, strokePaint);
             canvas.drawText(text2, 0, bottomYPosition, paint);
         } else {
             Rect rect = new Rect();
             paint.getTextBounds(meme.message, 0, meme.message.length() - 1, rect);
             int yPosition = getTopYTextPosition(rect, bitmap);
+            canvas.drawText(meme.message, 0, yPosition, strokePaint);
             canvas.drawText(meme.message, 0, yPosition, paint);
         }
         return bitmap;
     }
 
     // method to init a new paint for a canvas and return it
-    private Paint getPaint(Canvas canvas) {
+    private Paint getPaint() {
         Paint paint = new Paint();
         paint.setColor(Color.WHITE);
-        int text_size = 115;
-        paint.setTextSize(text_size);
+        paint.setTextSize(115);
         paint.setTypeface(getTypeface());
         return paint;
+    }
+
+    // using this stackoverflow question
+    // http://stackoverflow.com/questions/1723846/how-do-you-draw-text-with-a-border-on-a-mapview-in-android
+    // answer by Jeremy Logan
+    private Paint getStrokePaint() {
+        Paint strokePaint = new Paint();
+        strokePaint.setARGB(255, 0, 0, 0);
+        strokePaint.setTypeface(getTypeface());
+        strokePaint.setStyle(Paint.Style.STROKE);
+        strokePaint.setTextSize(115);
+        strokePaint.setStrokeWidth(10);
+        return strokePaint;
     }
 
 
@@ -213,7 +230,7 @@ public class MemesRMaiden extends AppCompatActivity {
     private Typeface getTypeface() {
         AssetManager am = this.getApplicationContext().getAssets();
         return Typeface.createFromAsset(am,
-                String.format(Locale.US, "fonts/%s", "Coda-Heavy.ttf"));
+                String.format(Locale.US, "fonts/%s", "ImpactURW.ttf"));
     }
 
     public void set_background_black () {
@@ -222,21 +239,23 @@ public class MemesRMaiden extends AppCompatActivity {
     }
 
     // when the meme only has one string, find the largest font size that fits on the image
-    private int getFontSize(Paint paint, String text, Bitmap bitmap) {
+    private int getFontSize(Paint paint, Paint strokePaint, String text, Bitmap bitmap) {
         int font_size = 100;
         while (paint.measureText(text) > bitmap.getWidth()) {
             paint.setTextSize(font_size);
+            strokePaint.setTextSize(font_size);
             font_size -= 1;
         }
         return font_size;
     }
 
     // when the meme's texts are split, find the largest font size that fits on the image
-    private int getFontSize(Paint paint, String text1, String text2, Bitmap bitmap) {
+    private int getFontSize(Paint paint, Paint strokePaint, String text1, String text2, Bitmap bitmap) {
         int font_size = 115;
         paint.setTextSize(font_size);
         while (paint.measureText(text1) > bitmap.getWidth() || paint.measureText(text2) > bitmap.getWidth()) {
             paint.setTextSize(font_size);
+            strokePaint.setTextSize(font_size);
             font_size -= 1;
         }
         return font_size;
