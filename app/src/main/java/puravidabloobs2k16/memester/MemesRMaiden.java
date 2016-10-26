@@ -184,6 +184,7 @@ public class MemesRMaiden extends AppCompatActivity {
                 text2 = texts[1];
                 font_size = getFontSize(paint, strokePaint, text1, text2, bitmap);
             }
+            strokePaint.setTextSize(paint.getTextSize());
             Rect rect = new Rect();
             paint.getTextBounds(text1, 0, text1.length() - 1, rect);
             int topYPosition = getTopYTextPosition(rect, bitmap);
@@ -191,6 +192,10 @@ public class MemesRMaiden extends AppCompatActivity {
             canvas.drawText(text1, 0, topYPosition, paint);
             paint.getTextBounds(text2, 0, text2.length() - 1, rect);
             int bottomYPosition = getBottomYTextPosition(rect, bitmap);
+            for (int i = 0; i < 30; i++) {
+                System.out.println("Text size is " + strokePaint.getTextSize());
+                System.out.println("text size is " + paint.getTextSize());
+            }
             canvas.drawText(text2, 0, bottomYPosition, strokePaint);
             canvas.drawText(text2, 0, bottomYPosition, paint);
         } else {
@@ -218,10 +223,10 @@ public class MemesRMaiden extends AppCompatActivity {
     private Paint getStrokePaint() {
         Paint strokePaint = new Paint();
         strokePaint.setARGB(255, 0, 0, 0);
-        strokePaint.setTypeface(getTypeface());
         strokePaint.setStyle(Paint.Style.STROKE);
         strokePaint.setTextSize(115);
-        strokePaint.setStrokeWidth(10);
+        strokePaint.setTypeface(getTypeface());
+        strokePaint.setStrokeWidth(4);
         return strokePaint;
     }
 
@@ -251,14 +256,13 @@ public class MemesRMaiden extends AppCompatActivity {
 
     // when the meme's texts are split, find the largest font size that fits on the image
     private int getFontSize(Paint paint, Paint strokePaint, String text1, String text2, Bitmap bitmap) {
-        int font_size = 115;
+        float font_size = 115;
         paint.setTextSize(font_size);
         while (paint.measureText(text1) > bitmap.getWidth() || paint.measureText(text2) > bitmap.getWidth()) {
             paint.setTextSize(font_size);
-            strokePaint.setTextSize(font_size);
             font_size -= 1;
         }
-        return font_size;
+        return (int) font_size;
     }
 
     // split a text in (about) half at whitespace
